@@ -13,13 +13,23 @@ async function delay(time: number) {
 }
 
 async function handleError(error: any, attemptsOnLimitError: number) {
+  const tooMuchRequestsErrorStatus = 429;
+
   console.log(error);
 
-  if (error.status === 429 && attemptsOnLimitError) {
+  if (error.status === tooMuchRequestsErrorStatus && attemptsOnLimitError) {
     await delay(config.delayOnError);
   } else {
     process.exit(1);
   }
+}
+
+async function handleShowsError(error: any) {
+  const endPagesErrorStatus = 404;
+
+  console.log(error);
+
+  process.exit(error.status === endPagesErrorStatus ? 0 : 1);
 }
 
 async function scrap() {
@@ -60,10 +70,12 @@ async function scrap() {
   }
 
   while (isTrue) {
-    const shows = await fetcher.getShows(page);
+    let shows: Show[];
 
-    if (!shows.length) {
-      break;
+    try {
+      shows = await fetcher.getShows(page);
+    } catch (error) {
+      handleShowsError(error);
     }
 
     await saveShowsWithCast(shows, config.queryLimit);
